@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
+import { getRedisClient } from '@/lib/redis/config'
 import { createManualToolStreamResponse } from '@/lib/streaming/create-manual-tool-stream'
 import { createToolCallingStreamResponse } from '@/lib/streaming/create-tool-calling-stream'
 import { Model } from '@/lib/types/models'
@@ -56,6 +57,35 @@ export async function POST(req: Request) {
           statusText: 'Not Found'
         }
       )
+    }
+
+    // Free guest limit enforcement
+    if (userId === 'anonymous') {
+      const guestId = cookieStore.get('guest_id')?.value
+      if (!guestId) {
+        return new Response('Unauthorized', { status: 401 })
+      }
+      try {
+        const redis = await getRedisClient()
+        const limit = parseInt(process.env.FREE_GUEST_EXCHANGES || '3', 10)
+        const key = `guest:exchanges:${guestId}`
+        const currentRaw = await redis.get(key)
+        const current = currentRaw ? parseInt(String(currentRaw), 10) : 0
+        if (!Number.isNaN(current) && current >= limit) {
+          return new Response(
+            JSON.stringify({ code: 'FREE_LIMIT_REACHED' }),
+            {
+              status: 429,
+              headers: {
+                'content-type': 'application/json',
+                'x-free-limit': 'reached'
+              }
+            }
+          )
+        }
+      } catch (e) {
+        console.error('Guest limit check failed:', e)
+      }
     }
 
     const supportsToolCalling = selectedModel.toolCallType === 'native'

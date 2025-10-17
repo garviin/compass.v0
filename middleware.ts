@@ -29,6 +29,19 @@ export async function middleware(request: NextRequest) {
     })
   }
 
+  // Ensure a persistent guest_id cookie exists for anonymous usage tracking
+  const existingGuestId = request.cookies.get('guest_id')?.value
+  if (!existingGuestId) {
+    const guestId = crypto.randomUUID()
+    response.cookies.set('guest_id', guestId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365 // 1 year
+    })
+  }
+
   // Add request information to response headers
   response.headers.set('x-url', request.url)
   response.headers.set('x-host', host)

@@ -1,8 +1,8 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Textarea from 'react-textarea-autosize'
-import { useRouter } from 'next/navigation'
 
 import { Message } from 'ai'
 import { ArrowUp, ChevronDown, MessageCirclePlus, Square } from 'lucide-react'
@@ -11,11 +11,11 @@ import { Model } from '@/lib/types/models'
 import { cn } from '@/lib/utils'
 
 import { useArtifact } from './artifact/artifact-context'
-import { Button } from './ui/button'
-import { IconLogo } from './ui/icons'
 import { EmptyScreen } from './empty-screen'
 import { ModelSelector } from './model-selector'
 import { SearchModeToggle } from './search-mode-toggle'
+import { Button } from './ui/button'
+import { IconLogo } from './ui/icons'
 
 interface ChatPanelProps {
   input: string
@@ -32,6 +32,8 @@ interface ChatPanelProps {
   showScrollToBottomButton: boolean
   /** Reference to the scroll container */
   scrollContainerRef: React.RefObject<HTMLDivElement>
+  /** Whether the free limit has been reached for this browser */
+  isLocked?: boolean
 }
 
 export function ChatPanel({
@@ -46,7 +48,8 @@ export function ChatPanel({
   append,
   models,
   showScrollToBottomButton,
-  scrollContainerRef
+  scrollContainerRef,
+  isLocked = false
 }: ChatPanelProps) {
   const [showEmptyScreen, setShowEmptyScreen] = useState(false)
   const router = useRouter()
@@ -144,6 +147,12 @@ export function ChatPanel({
         )}
 
         <div className="relative flex flex-col w-full gap-2 bg-muted rounded-3xl border border-input">
+          {isLocked && (
+            <div className="mx-2 mt-2 rounded-md border bg-card p-3 text-sm">
+              You’ve used your 3 free replies today. <a href="/auth/login" className="underline">Sign in</a> or <a href="/auth/sign-up" className="underline">create an account</a>.
+            </div>
+          )}
+
           <Textarea
             ref={inputRef}
             name="input"
@@ -155,7 +164,7 @@ export function ChatPanel({
             placeholder="Ask a question..."
             spellCheck={false}
             value={input}
-            disabled={isLoading || isToolInvocationInProgress()}
+            disabled={isLocked || isLoading || isToolInvocationInProgress()}
             className="resize-none w-full min-h-12 bg-transparent border-0 p-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             onChange={e => {
               handleInputChange(e)
@@ -169,6 +178,10 @@ export function ChatPanel({
                 !enterDisabled
               ) {
                 if (input.trim().length === 0) {
+                  e.preventDefault()
+                  return
+                }
+                if (isLocked) {
                   e.preventDefault()
                   return
                 }
@@ -206,6 +219,7 @@ export function ChatPanel({
                 variant={'outline'}
                 className={cn(isLoading && 'animate-pulse', 'rounded-full')}
                 disabled={
+                  isLocked ||
                   (input.length === 0 && !isLoading) ||
                   isToolInvocationInProgress()
                 }

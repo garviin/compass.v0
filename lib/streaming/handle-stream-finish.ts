@@ -2,8 +2,10 @@ import { CoreMessage, DataStreamWriter, JSONValue, Message } from 'ai'
 
 import { getChat, saveChat } from '@/lib/actions/chat'
 import { generateRelatedQuestions } from '@/lib/agents/generate-related-questions'
+import { getRedisClient } from '@/lib/redis/config'
 import { ExtendedCoreMessage } from '@/lib/types'
 import { convertToExtendedCoreMessages } from '@/lib/utils'
+import { cookies } from 'next/headers'
 
 interface HandleStreamFinishParams {
   responseMessages: CoreMessage[]
@@ -95,5 +97,22 @@ export async function handleStreamFinish({
   } catch (error) {
     console.error('Error in handleStreamFinish:', error)
     throw error
+  }
+
+  // Increment guest exchange count after a successful assistant response
+  try {
+    if (userId === 'anonymous') {
+      const cookieStore = await cookies()
+      const guestId = cookieStore.get('guest_id')?.value
+      if (guestId) {
+        const redis = await getRedisClient()
+        const key = `guest:exchanges:${guestId}`
+        await redis.incr(key)
+        // Ensure a 24h rolling window from first increment
+        await redis.expire(key, 60 * 60 * 24)
+      }
+    }
+  } catch (e) {
+    console.error('Failed to increment guest exchange count:', e)
   }
 }

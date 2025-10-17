@@ -33,6 +33,7 @@ export function Chat({
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
+  const [isLocked, setIsLocked] = useState(false)
 
   const {
     messages,
@@ -61,8 +62,16 @@ export function Chat({
       }
       window.dispatchEvent(new CustomEvent('chat-history-updated'))
     },
-    onError: error => {
-      toast.error(`Error in chat: ${error.message}`)
+    onError: (error: any) => {
+      const message = (error && error.message) || ''
+      const code = error?.code || error?.data?.code
+      const status = error?.status || error?.response?.status
+      if (code === 'FREE_LIMIT_REACHED' || message.includes('FREE_LIMIT_REACHED') || status === 429 || message.includes('429')) {
+        setIsLocked(true)
+        toast.error('You have reached the free chat limit. Please sign in to continue.')
+        return
+      }
+      toast.error(`Error in chat: ${message}`)
     },
     sendExtraMessageFields: false, // Disable extra message fields,
     experimental_throttle: 100
@@ -242,6 +251,7 @@ export function Chat({
         models={models}
         showScrollToBottomButton={!isAtBottom}
         scrollContainerRef={scrollContainerRef}
+        isLocked={isLocked}
       />
     </div>
   )
