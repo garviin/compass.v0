@@ -73,7 +73,14 @@ export function createManualToolStreamResponse(config: BaseStreamConfig) {
               dataStream,
               userId,
               skipRelatedQuestions: true,
-              annotations
+              annotations,
+              usage: result.usage
+                ? {
+                    promptTokens: result.usage.promptTokens,
+                    completionTokens: result.usage.completionTokens,
+                    totalTokens: result.usage.totalTokens
+                  }
+                : undefined
             })
           },
           onChunk(event) {

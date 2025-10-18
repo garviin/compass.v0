@@ -7,6 +7,7 @@ This guide covers the optional features and their configuration in Morphic.
 - [Chat History Storage](#chat-history-storage)
 - [Search Providers](#search-providers)
 - [Additional AI Providers](#additional-ai-providers)
+- [Pricing System](#pricing-system)
 - [Other Features](#other-features)
 
 ## Chat History Storage
@@ -204,6 +205,81 @@ XAI_API_KEY=[YOUR_XAI_API_KEY]
 OPENAI_COMPATIBLE_API_KEY=[YOUR_API_KEY]
 OPENAI_COMPATIBLE_API_BASE_URL=[YOUR_API_BASE_URL]
 ```
+
+## Pricing System
+
+Morphic includes a comprehensive pay-per-use pricing system that tracks AI API usage and manages user account balances.
+
+### Features
+
+- ✅ Automatic usage tracking with token counts
+- ✅ Direct cost passthrough from AI providers (1:1 pricing, no markup)
+- ✅ User balance management with real-time deductions
+- ✅ Per-chat cost tracking and analytics
+- ✅ Balance display in UI with low-balance warnings
+
+### Setup
+
+The pricing system requires Supabase for data storage. No additional environment variables are needed beyond the standard Supabase configuration.
+
+#### 1. Apply Database Migrations
+
+```bash
+# Using Supabase CLI (recommended)
+supabase link --project-ref <your-project-ref>
+supabase db push
+
+# Or manually via Supabase Dashboard SQL Editor
+# Run files in supabase/migrations/ in order
+```
+
+#### 2. Initialize User Balances
+
+Add to your user signup flow:
+
+```typescript
+import { initializeUserBalance } from '@/lib/pricing/balance-service'
+
+// Give new users starting credits
+await initializeUserBalance(userId, 10.00) // $10 welcome credit
+```
+
+#### 3. Deploy
+
+```bash
+bun run build
+# Deploy to your platform
+```
+
+### Configuration Options
+
+While the pricing system works out of the box, you can customize:
+
+- **Minimum balance**: Edit the threshold in `app/api/chat/route.ts` (default: $0.01)
+- **Warning thresholds**: Modify in `components/balance-display.tsx` (low: $1.00, critical: $0.10)
+- **Cache TTL**: Adjust pricing cache duration in `lib/pricing/pricing-service.ts` (default: 5 minutes)
+
+### Model Pricing
+
+Pricing data is stored in:
+1. **Supabase database** (primary source) - Update pricing without redeployment
+2. **`public/config/models.json`** (fallback) - Used when database is unavailable
+
+All 23 configured models have pricing data included. See [Pricing Documentation](./pricing/README.md) for current rates.
+
+### Documentation
+
+For detailed information, see the [Pricing Documentation](./pricing/):
+
+- **[Overview & Quick Start](./pricing/README.md)** - Getting started guide
+- **[Architecture](./pricing/ARCHITECTURE.md)** - System design and technical decisions
+- **[Database](./pricing/DATABASE.md)** - Schema, migrations, and RLS policies
+- **[API Reference](./pricing/API_REFERENCE.md)** - HTTP endpoints documentation
+- **[Services](./pricing/SERVICES.md)** - Service layer API reference
+- **[Deployment](./pricing/DEPLOYMENT.md)** - Step-by-step deployment guide
+- **[Examples](./pricing/EXAMPLES.md)** - Common usage patterns
+- **[UI Components](./pricing/UI_COMPONENTS.md)** - Frontend integration
+- **[Troubleshooting](./pricing/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Other Features
 

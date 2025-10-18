@@ -6,7 +6,11 @@
       "provider": "OpenAI",
       "providerId": "openai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.01,
+        "outputPricePer1kTokens": 0.03
+      }
     },
     {
       "id": "gpt-4.1-mini",
@@ -14,7 +18,11 @@
       "provider": "OpenAI",
       "providerId": "openai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0005,
+        "outputPricePer1kTokens": 0.0015
+      }
     },
     {
       "id": "gpt-4.1-nano",
@@ -22,7 +30,11 @@
       "provider": "OpenAI",
       "providerId": "openai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0001,
+        "outputPricePer1kTokens": 0.0003
+      }
     },
     {
       "id": "o3-mini",
@@ -30,7 +42,11 @@
       "provider": "OpenAI",
       "providerId": "openai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0015,
+        "outputPricePer1kTokens": 0.006
+      }
     },
     {
       "id": "gpt-4o",
@@ -38,7 +54,11 @@
       "provider": "OpenAI",
       "providerId": "openai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0025,
+        "outputPricePer1kTokens": 0.01
+      }
     },
     {
       "id": "gpt-4o-mini",
@@ -46,7 +66,11 @@
       "provider": "OpenAI",
       "providerId": "openai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.00015,
+        "outputPricePer1kTokens": 0.0006
+      }
     },
     {
       "id": "claude-3-7-sonnet-20250219",
@@ -54,7 +78,11 @@
       "provider": "Anthropic",
       "providerId": "anthropic",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.003,
+        "outputPricePer1kTokens": 0.015
+      }
     },
     {
       "id": "claude-3-5-sonnet-latest",
@@ -62,7 +90,11 @@
       "provider": "Anthropic",
       "providerId": "anthropic",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.003,
+        "outputPricePer1kTokens": 0.015
+      }
     },
     {
       "id": "claude-3-5-haiku-20241022",
@@ -70,7 +102,11 @@
       "provider": "Anthropic",
       "providerId": "anthropic",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0008,
+        "outputPricePer1kTokens": 0.004
+      }
     },
     {
       "id": "<AZURE_DEPLOYMENT_NAME>",
@@ -78,7 +114,11 @@
       "provider": "Azure",
       "providerId": "azure",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0025,
+        "outputPricePer1kTokens": 0.01
+      }
     },
     {
       "id": "gemini-2.0-flash",
@@ -86,7 +126,11 @@
       "provider": "Google Generative AI",
       "providerId": "google",
       "enabled": true,
-      "toolCallType": "manual"
+      "toolCallType": "manual",
+      "pricing": {
+        "inputPricePer1kTokens": 0.000075,
+        "outputPricePer1kTokens": 0.0003
+      }
     },
     {
       "id": "gemini-2.0-flash-thinking-exp-01-21",
@@ -95,7 +139,11 @@
       "providerId": "google",
       "enabled": true,
       "toolCallType": "manual",
-      "toolCallModel": "gemini-2.0-flash"
+      "toolCallModel": "gemini-2.0-flash",
+      "pricing": {
+        "inputPricePer1kTokens": 0.000075,
+        "outputPricePer1kTokens": 0.0003
+      }
     },
     {
       "id": "gemini-2.5-pro-exp-03-25",
@@ -104,7 +152,11 @@
       "providerId": "google",
       "enabled": true,
       "toolCallType": "manual",
-      "toolCallModel": "gemini-2.0-flash"
+      "toolCallModel": "gemini-2.0-flash",
+      "pricing": {
+        "inputPricePer1kTokens": 0.00125,
+        "outputPricePer1kTokens": 0.005
+      }
     },
     {
       "id": "accounts/fireworks/models/deepseek-r1",
@@ -113,7 +165,11 @@
       "providerId": "fireworks",
       "enabled": true,
       "toolCallType": "manual",
-      "toolCallModel": "accounts/fireworks/models/llama-v3p1-8b-instruct"
+      "toolCallModel": "accounts/fireworks/models/llama-v3p1-8b-instruct",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0002,
+        "outputPricePer1kTokens": 0.0002
+      }
     },
     {
       "id": "accounts/fireworks/models/llama4-maverick-instruct-basic",
@@ -122,7 +178,11 @@
       "providerId": "fireworks",
       "enabled": true,
       "toolCallType": "manual",
-      "toolCallModel": "accounts/fireworks/models/llama-v3p1-8b-instruct"
+      "toolCallModel": "accounts/fireworks/models/llama-v3p1-8b-instruct",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0002,
+        "outputPricePer1kTokens": 0.0002
+      }
     },
     {
       "id": "deepseek-reasoner",
@@ -131,7 +191,11 @@
       "providerId": "deepseek",
       "enabled": true,
       "toolCallType": "manual",
-      "toolCallModel": "deepseek-chat"
+      "toolCallModel": "deepseek-chat",
+      "pricing": {
+        "inputPricePer1kTokens": 0.00055,
+        "outputPricePer1kTokens": 0.0022
+      }
     },
     {
       "id": "deepseek-chat",
@@ -139,7 +203,11 @@
       "provider": "DeepSeek",
       "providerId": "deepseek",
       "enabled": true,
-      "toolCallType": "manual"
+      "toolCallType": "manual",
+      "pricing": {
+        "inputPricePer1kTokens": 0.00014,
+        "outputPricePer1kTokens": 0.00028
+      }
     },
     {
       "id": "deepseek-r1-distill-llama-70b",
@@ -148,7 +216,11 @@
       "providerId": "groq",
       "enabled": true,
       "toolCallType": "manual",
-      "toolCallModel": "llama-3.1-8b-instant"
+      "toolCallModel": "llama-3.1-8b-instant",
+      "pricing": {
+        "inputPricePer1kTokens": 0.00059,
+        "outputPricePer1kTokens": 0.00079
+      }
     },
     {
       "id": "meta-llama/llama-4-maverick-17b-128e-instruct",
@@ -156,7 +228,11 @@
       "provider": "Groq",
       "providerId": "groq",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.0002,
+        "outputPricePer1kTokens": 0.0002
+      }
     },
     {
       "id": "grok-2-1212",
@@ -164,7 +240,11 @@
       "provider": "xAI",
       "providerId": "xai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.002,
+        "outputPricePer1kTokens": 0.01
+      }
     },
     {
       "id": "grok-2-vision-1212",
@@ -172,7 +252,11 @@
       "provider": "xAI",
       "providerId": "xai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.002,
+        "outputPricePer1kTokens": 0.01
+      }
     },
     {
       "id": "grok-3-beta",
@@ -180,7 +264,11 @@
       "provider": "xAI",
       "providerId": "xai",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.005,
+        "outputPricePer1kTokens": 0.015
+      }
     },
     {
       "id": "<OPENAI_COMPATIBLE_MODEL>",
@@ -188,7 +276,11 @@
       "provider": "OpenAI Compatible",
       "providerId": "openai-compatible",
       "enabled": true,
-      "toolCallType": "native"
+      "toolCallType": "native",
+      "pricing": {
+        "inputPricePer1kTokens": 0.001,
+        "outputPricePer1kTokens": 0.002
+      }
     }
   ]
 }

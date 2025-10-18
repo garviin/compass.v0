@@ -1,11 +1,18 @@
+import { cookies } from 'next/headers'
+
 import { CoreMessage, DataStreamWriter, JSONValue, Message } from 'ai'
 
 import { getChat, saveChat } from '@/lib/actions/chat'
 import { generateRelatedQuestions } from '@/lib/agents/generate-related-questions'
+import {
+  calculateCost,
+  deductBalance,
+  getModelPricing,
+  recordUsage
+} from '@/lib/pricing'
 import { getRedisClient } from '@/lib/redis/config'
 import { ExtendedCoreMessage } from '@/lib/types'
 import { convertToExtendedCoreMessages } from '@/lib/utils'
-import { cookies } from 'next/headers'
 
 interface HandleStreamFinishParams {
   responseMessages: CoreMessage[]
@@ -16,6 +23,11 @@ interface HandleStreamFinishParams {
   userId: string
   skipRelatedQuestions?: boolean
   annotations?: ExtendedCoreMessage[]
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
 }
 
 export async function handleStreamFinish({
@@ -26,8 +38,45 @@ export async function handleStreamFinish({
   dataStream,
   userId,
   skipRelatedQuestions = false,
-  annotations = []
+  annotations = [],
+  usage
 }: HandleStreamFinishParams) {
+  // Track usage and deduct balance if usage data is available
+  if (usage && userId !== 'anonymous') {
+    try {
+      // Parse model string (format: "providerId:modelId")
+      const [providerId, modelId] = model.split(':')
+
+      // Get pricing for this model
+      const pricing = await getModelPricing(modelId, providerId)
+
+      if (pricing) {
+        // Calculate cost
+        const cost = calculateCost(
+          usage.promptTokens,
+          usage.completionTokens,
+          pricing
+        )
+
+        // Record usage to database
+        await recordUsage(userId, chatId, cost)
+
+        // Deduct cost from user balance
+        const deducted = await deductBalance(userId, cost.totalCost)
+        if (!deducted) {
+          console.warn(
+            `Failed to deduct balance for user ${userId}, cost: ${cost.totalCost}`
+          )
+        }
+      } else {
+        console.warn(`No pricing found for model ${modelId} (${providerId})`)
+      }
+    } catch (error) {
+      console.error('Error tracking usage:', error)
+      // Don't throw - we don't want to fail the whole request if usage tracking fails
+    }
+  }
+
   try {
     const extendedCoreMessages = convertToExtendedCoreMessages(originalMessages)
     let allAnnotations = [...annotations]

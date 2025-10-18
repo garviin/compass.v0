@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -19,6 +20,7 @@ import {
 import { ChatHistorySection } from './sidebar/chat-history-section'
 import { ChatHistorySkeleton } from './sidebar/chat-history-skeleton'
 import { IconLogo } from './ui/icons'
+import { BalanceDisplay } from './balance-display'
 
 export default function AppSidebar() {
   return (
@@ -47,6 +49,9 @@ export default function AppSidebar() {
           </Suspense>
         </div>
       </SidebarContent>
+      <SidebarFooter className="px-2 py-2 border-t">
+        <BalanceDisplay />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

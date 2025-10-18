@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
+import { getUserBalance } from '@/lib/pricing/balance-service'
 import { getRedisClient } from '@/lib/redis/config'
 import { createManualToolStreamResponse } from '@/lib/streaming/create-manual-tool-stream'
 import { createToolCallingStreamResponse } from '@/lib/streaming/create-tool-calling-stream'
@@ -85,6 +86,33 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error('Guest limit check failed:', e)
+      }
+    } else {
+      // Check balance for authenticated users
+      try {
+        const balance = await getUserBalance(userId)
+        // Require at least $0.01 to make a request
+        // This prevents users with zero balance from making requests
+        if (balance < 0.01) {
+          return new Response(
+            JSON.stringify({
+              code: 'INSUFFICIENT_BALANCE',
+              message:
+                'Insufficient balance. Please add credits to your account.',
+              balance
+            }),
+            {
+              status: 402,
+              headers: {
+                'content-type': 'application/json',
+                'x-balance': balance.toString()
+              }
+            }
+          )
+        }
+      } catch (e) {
+        console.error('Balance check failed:', e)
+        // Continue anyway - we don't want to block users if balance check fails
       }
     }
 

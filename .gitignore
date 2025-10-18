@@ -37,3 +37,8 @@ next-env.d.ts
 
 # temporary files
 .tmp/
+/.cursor/
+/.bin/
+/supabase/.temp/
+.e2e_email
+.e2e_password
