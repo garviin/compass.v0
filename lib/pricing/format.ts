@@ -21,7 +21,8 @@ export function formatCost(
   locale?: string
 ): string {
   // Use the new currency service if currency is supported
-  if (currency in getCurrencyInfo(currency as SupportedCurrency)) {
+  const currencyInfo = getCurrencyInfo(currency as SupportedCurrency)
+  if (currencyInfo) {
     return formatCurrencyAmount(cost, currency as SupportedCurrency, locale)
   }
 

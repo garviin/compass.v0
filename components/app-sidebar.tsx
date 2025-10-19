@@ -3,18 +3,19 @@ import Link from 'next/link'
 
 import { Plus } from 'lucide-react'
 
+import { getStripePublishableKey } from '@/lib/stripe/stripe-client'
 import { cn } from '@/lib/utils'
 
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  SidebarTrigger
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarRail,
+    SidebarTrigger
 } from '@/components/ui/sidebar'
 
 import { ChatHistorySection } from './sidebar/chat-history-section'
@@ -23,6 +24,7 @@ import { IconLogo } from './ui/icons'
 import { BalanceDisplay } from './balance-display'
 
 export default function AppSidebar() {
+  const stripePublishableKey = getStripePublishableKey()
   return (
     <Sidebar side="left" variant="sidebar" collapsible="offcanvas">
       <SidebarHeader className="flex flex-row justify-between items-center">
@@ -50,7 +52,9 @@ export default function AppSidebar() {
         </div>
       </SidebarContent>
       <SidebarFooter className="px-2 py-2 border-t">
-        <BalanceDisplay />
+        <BalanceDisplay
+          stripePublishableKey={stripePublishableKey}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

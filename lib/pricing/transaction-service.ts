@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 export type TransactionType = 'deposit' | 'usage' | 'refund' | 'adjustment'
@@ -48,7 +49,8 @@ export async function createTransaction(params: {
   metadata?: Record<string, unknown>
 }): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    // Use admin client for inserts to bypass RLS during trusted server events
+    const supabase = createAdminClient()
 
     const { error } = await supabase.from('transactions').insert({
       user_id: params.userId,
@@ -64,6 +66,14 @@ export async function createTransaction(params: {
     })
 
     if (error) {
+      // 23505 = unique constraint violation (duplicate payment intent)
+      // This is expected during race conditions - one webhook wins, others fail gracefully
+      if (error.code === '23505') {
+        console.warn(
+          `Transaction already exists for payment intent ${params.stripePaymentIntentId} - skipping duplicate`
+        )
+        return true // Return true since transaction already exists
+      }
       console.error('Failed to create transaction:', error)
       return false
     }
@@ -134,12 +144,14 @@ export async function getTransactionById(
 
 /**
  * Get transaction by Stripe payment intent ID
+ * @param useAdmin - Use admin client to bypass RLS (for server-side operations like webhooks)
  */
 export async function getTransactionByPaymentIntent(
-  paymentIntentId: string
+  paymentIntentId: string,
+  useAdmin: boolean = false
 ): Promise<Transaction | null> {
   try {
-    const supabase = await createClient()
+    const supabase = useAdmin ? createAdminClient() : await createClient()
 
     const { data, error } = await supabase
       .from('transactions')
@@ -148,6 +160,10 @@ export async function getTransactionByPaymentIntent(
       .single()
 
     if (error) {
+      // PGRST116 means no rows returned - this is expected for new payments
+      if (error.code === 'PGRST116') {
+        return null
+      }
       console.error('Failed to fetch transaction by payment intent:', error)
       return null
     }
@@ -220,7 +236,8 @@ export async function getTotalByType(
     const { data, error } = await query
 
     if (error) {
-      console.error('Failed to calculate total by type:', error)
+      // Use warn to avoid noisy RSC error overlay in dev while still surfacing context
+      console.warn('Failed to calculate total by type:', { type, error })
       return 0
     }
 
@@ -229,7 +246,7 @@ export async function getTotalByType(
       0
     )
   } catch (error) {
-    console.error('Error calculating total by type:', error)
+    console.warn('Error calculating total by type:', { type, error })
     return 0
   }
 }

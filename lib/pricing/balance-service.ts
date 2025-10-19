@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 import { createTransaction } from './transaction-service'
@@ -43,12 +44,14 @@ export async function getUserBalance(userId: string): Promise<number> {
 
 /**
  * Get full user balance record
+ * @param useAdmin - Use admin client to bypass RLS (for server-side operations like webhooks)
  */
 export async function getUserBalanceRecord(
-  userId: string
+  userId: string,
+  useAdmin: boolean = false
 ): Promise<UserBalance | null> {
   try {
-    const supabase = await createClient()
+    const supabase = useAdmin ? createAdminClient() : await createClient()
 
     const { data, error } = await supabase
       .from('user_balances')
@@ -59,7 +62,7 @@ export async function getUserBalanceRecord(
     if (error) {
       // If user doesn't have a balance record yet, create one with $0
       if (error.code === 'PGRST116') {
-        await initializeUserBalance(userId)
+        await initializeUserBalance(userId, 0, useAdmin)
         return {
           userId,
           balance: 0,
@@ -89,13 +92,15 @@ export async function getUserBalanceRecord(
 
 /**
  * Initialize a user's balance (usually called on signup)
+ * @param useAdmin - Use admin client to bypass RLS (for server-side operations like webhooks)
  */
 export async function initializeUserBalance(
   userId: string,
-  initialBalance: number = 0
+  initialBalance: number = 0,
+  useAdmin: boolean = false
 ): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    const supabase = useAdmin ? createAdminClient() : await createClient()
 
     const { error } = await supabase.from('user_balances').insert({
       user_id: userId,
@@ -120,92 +125,142 @@ export async function initializeUserBalance(
 }
 
 /**
- * Add credits to user's balance (for payments/deposits)
+ * Add or deduct balance (for payments/deposits/refunds)
+ * Now includes transaction logging and uses atomic operations to prevent race conditions
+ * @param useAdmin - Use admin client to bypass RLS (required for webhook processing)
  */
 export async function addBalance(
   userId: string,
-  amount: number
+  amount: number,
+  description?: string,
+  stripePaymentIntentId?: string,
+  stripeChargeId?: string,
+  metadata?: Record<string, unknown>,
+  useAdmin: boolean = true
 ): Promise<boolean> {
-  if (amount <= 0) {
-    console.error('Amount must be positive')
+  if (amount === 0) {
+    console.error('Amount cannot be zero')
     return false
   }
 
   try {
-    const supabase = await createClient()
+    // Use admin client for webhook operations, regular client for user operations
+    const supabase = useAdmin ? createAdminClient() : await createClient()
 
     // Ensure user has a balance record
-    await initializeUserBalance(userId)
+    await initializeUserBalance(userId, 0, useAdmin)
 
-    // Get current balance
-    const currentBalance = await getUserBalance(userId)
+    // Get currency before the atomic update
+    const balanceRecord = await getUserBalanceRecord(userId, useAdmin)
+    if (!balanceRecord) {
+      console.error('Failed to get balance record for user:', userId)
+      return false
+    }
+    const currency = balanceRecord.currency
 
-    // Update balance
-    const { error } = await supabase
-      .from('user_balances')
-      .update({
-        balance: currentBalance + amount,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
+    // Determine transaction type based on amount and context
+    let type: 'deposit' | 'usage' | 'refund' | 'adjustment'
+    if (stripePaymentIntentId) {
+      type = amount > 0 ? 'deposit' : 'refund'
+    } else {
+      type = amount > 0 ? 'adjustment' : 'usage'
+    }
+
+    // For payment intents, check if transaction already exists (idempotency at DB level)
+    if (stripePaymentIntentId) {
+      const existingTxn = await supabase
+        .from('transactions')
+        .select('id, balance_after')
+        .eq('stripe_payment_intent_id', stripePaymentIntentId)
+        .single()
+
+      if (existingTxn.data) {
+        console.log(
+          `Transaction already exists for payment intent ${stripePaymentIntentId}, skipping balance update`
+        )
+        return true // Already processed
+      }
+    }
+
+    // Use atomic operation to update balance and get both old and new values
+    // This prevents race conditions by doing the increment in the database
+    const { data, error } = await supabase.rpc('increment_balance', {
+      p_user_id: userId,
+      p_amount: amount
+    })
 
     if (error) {
-      console.error('Failed to add balance:', error)
+      console.error('Failed to update balance:', error)
       return false
+    }
+
+    if (!data || data.length === 0) {
+      console.error('No data returned from balance update')
+      return false
+    }
+
+    const balanceBefore = parseFloat(data[0].balance_before)
+    const balanceAfter = parseFloat(data[0].balance_after)
+
+    // Log transaction - this will fail gracefully if duplicate due to UNIQUE constraint
+    const transactionCreated = await createTransaction({
+      userId,
+      type,
+      amount: Math.abs(amount), // Store absolute value
+      currency,
+      balanceBefore,
+      balanceAfter,
+      description: description || `${type}: ${Math.abs(amount)} ${currency}`,
+      stripePaymentIntentId,
+      stripeChargeId,
+      metadata
+    })
+
+    if (!transactionCreated) {
+      console.error(
+        'Failed to create transaction record - balance was updated but not logged!'
+      )
+      // Balance was already updated, so we can't easily roll back
+      // This should trigger monitoring alerts in production
     }
 
     return true
   } catch (error) {
-    console.error('Error adding balance:', error)
+    console.error('Error updating balance:', error)
     return false
   }
 }
 
 /**
  * Deduct cost from user's balance (for API usage)
+ * Now uses atomic operations and includes transaction logging
  */
 export async function deductBalance(
   userId: string,
-  amount: number
+  amount: number,
+  description?: string,
+  metadata?: Record<string, unknown>
 ): Promise<boolean> {
   if (amount < 0) {
     console.error('Amount cannot be negative')
     return false
   }
 
-  try {
-    const supabase = await createClient()
-
-    // Get current balance
-    const currentBalance = await getUserBalance(userId)
-
-    // Check if sufficient balance
-    if (currentBalance < amount) {
-      console.warn(
-        `Insufficient balance for user ${userId}: ${currentBalance} < ${amount}`
-      )
-      return false
-    }
-
-    // Deduct balance
-    const { error } = await supabase
-      .from('user_balances')
-      .update({
-        balance: currentBalance - amount,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('Failed to deduct balance:', error)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('Error deducting balance:', error)
+  if (amount === 0) {
+    console.error('Amount cannot be zero')
     return false
   }
+
+  // Use addBalance with negative amount for atomic operation
+  return addBalance(
+    userId,
+    -amount,
+    description || `API usage cost: ${amount}`,
+    undefined,
+    undefined,
+    metadata,
+    true // useAdmin=true for server-side operations
+  )
 }
 
 /**
@@ -232,10 +287,11 @@ export async function setBalance(
   }
 
   try {
-    const supabase = await createClient()
+    // Use admin client for writes to bypass RLS during trusted server events
+    const supabase = createAdminClient()
 
     // Ensure user has a balance record
-    await initializeUserBalance(userId)
+    await initializeUserBalance(userId, 0, true)
 
     const { error } = await supabase
       .from('user_balances')

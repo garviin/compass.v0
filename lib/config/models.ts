@@ -25,7 +25,8 @@ export async function getModels(): Promise<Model[]> {
       defaultModels.models.every(validateModel)
     ) {
       console.log('Successfully loaded default models')
-      staticModels = defaultModels.models
+      // defaultModels is validated above; assert the type to Model[]
+      staticModels = defaultModels.models as Model[]
     }
 
     // Try to fetch Ollama models if configured
@@ -73,7 +74,8 @@ async function fetchOllamaModels(): Promise<Model[]> {
 
     const data = await response.json()
     if (Array.isArray(data.models)) {
-      return data.models
+      const validated = data.models.filter((m: unknown) => validateModel(m)) as Model[]
+      return validated
     }
 
     return []
