@@ -1,0 +1,49 @@
+# Supabase CLI Configuration
+# This file enables local development with Supabase CLI
+# Run `supabase init` to set up local development environment
+
+[api]
+# Port for the API server
+port = 54321
+# Schemas to expose in your API
+schemas = ["public", "storage", "graphql_public"]
+# Extra schemas to add to the search_path of every request
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returns from a view, table, or stored procedure
+max_rows = 1000
+
+[db]
+# Port for the PostgreSQL database
+port = 54322
+# The database major version
+major_version = 15
+
+[studio]
+# Port for Supabase Studio (local dashboard)
+port = 54323
+
+[inbucket]
+# Port for Inbucket (local email testing)
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+# The maximum file size allowed (in MB)
+file_size_limit = 50
+
+[auth]
+# The base URL of your website
+site_url = "http://localhost:3000"
+# A list of *exact* URLs that auth providers are permitted to redirect to
+additional_redirect_urls = ["http://localhost:3000"]
+# How long tokens are valid for (in seconds)
+jwt_expiry = 3600
+# Enable anonymous sign-ins
+enable_signup = true
+
+[auth.email]
+# Enable or disable email signups
+enable_signup = true
+# Enable or disable email confirmations
+enable_confirmations = true
