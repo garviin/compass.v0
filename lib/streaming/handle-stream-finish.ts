@@ -43,7 +43,21 @@ export async function handleStreamFinish({
 }: HandleStreamFinishParams) {
   // Track usage and deduct balance if usage data is available
   if (usage && userId !== 'anonymous') {
+    // Generate unique request ID for idempotency
+    const requestId = `${chatId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+
     try {
+      // Validate token counts (server-side validation)
+      if (
+        usage.promptTokens < 0 ||
+        usage.completionTokens < 0 ||
+        usage.totalTokens !== usage.promptTokens + usage.completionTokens
+      ) {
+        throw new Error(
+          `Invalid token counts: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, total=${usage.totalTokens}`
+        )
+      }
+
       // Parse model string (format: "providerId:modelId")
       const [providerId, modelId] = model.split(':')
 
@@ -58,22 +72,52 @@ export async function handleStreamFinish({
           pricing
         )
 
-        // Record usage to database
-        await recordUsage(userId, chatId, cost)
-
-        // Deduct cost from user balance
-        const deducted = await deductBalance(userId, cost.totalCost)
-        if (!deducted) {
-          console.warn(
-            `Failed to deduct balance for user ${userId}, cost: ${cost.totalCost}`
+        // Deduct cost from user balance FIRST (fail fast if insufficient funds)
+        const transactionId = await deductBalance(userId, cost.totalCost)
+        if (!transactionId) {
+          throw new Error(
+            `Failed to deduct balance for user ${userId}, cost: ${cost.totalCost}. Insufficient funds or database error.`
           )
+        }
+
+        // Record usage to database with link to transaction
+        const usageRecordId = await recordUsage(
+          userId,
+          chatId,
+          cost,
+          requestId,
+          transactionId,
+          'completed'
+        )
+
+        if (!usageRecordId) {
+          // CRITICAL: Balance was deducted but usage not recorded
+          // This creates an accounting discrepancy that requires manual reconciliation
+          const errorDetails = {
+            userId,
+            chatId,
+            transactionId,
+            requestId,
+            cost: cost.totalCost,
+            modelId,
+            providerId,
+            timestamp: new Date().toISOString()
+          }
+          console.error(
+            '🚨 CRITICAL: Failed to record usage after balance deduction',
+            JSON.stringify(errorDetails, null, 2)
+          )
+          // TODO: Send alert to monitoring system (e.g., Sentry, DataDog)
+          // TODO: Queue for retry or manual reconciliation
+          // Balance already deducted, so we continue rather than failing the request
         }
       } else {
         console.warn(`No pricing found for model ${modelId} (${providerId})`)
       }
     } catch (error) {
       console.error('Error tracking usage:', error)
-      // Don't throw - we don't want to fail the whole request if usage tracking fails
+      // Throw error to fail the request - we don't want to provide free service
+      throw error
     }
   }
 

@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 import { CostCalculation } from './types'
@@ -14,43 +15,112 @@ export interface UsageRecord {
   inputCost: number
   outputCost: number
   totalCost: number
+  requestId?: string
+  transactionId?: string
+  status?: 'pending' | 'completed' | 'failed' | 'refunded'
   createdAt?: Date
 }
 
 /**
- * Record usage to the database
+ * Sleep helper for retry logic
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Record usage to the database with retry logic and idempotency
+ * @param requestId - Unique identifier for idempotency (prevents duplicate billing)
+ * @param transactionId - Links to the balance transaction that debited the user
+ * @param status - Status of the usage record ('pending', 'completed', 'failed', 'refunded')
+ * @returns Usage record ID on success, null on failure
  */
 export async function recordUsage(
   userId: string,
   chatId: string,
-  costCalculation: CostCalculation
-): Promise<boolean> {
-  try {
-    const supabase = await createClient()
+  costCalculation: CostCalculation,
+  requestId?: string,
+  transactionId?: string,
+  status: 'pending' | 'completed' | 'failed' | 'refunded' = 'completed'
+): Promise<string | null> {
+  const maxRetries = 3
+  const baseDelay = 100 // ms
 
-    const { error } = await supabase.from('usage_records').insert({
-      user_id: userId,
-      chat_id: chatId,
-      model_id: costCalculation.modelId,
-      provider_id: costCalculation.providerId,
-      input_tokens: costCalculation.inputTokens,
-      output_tokens: costCalculation.outputTokens,
-      total_tokens: costCalculation.totalTokens,
-      input_cost: costCalculation.inputCost,
-      output_cost: costCalculation.outputCost,
-      total_cost: costCalculation.totalCost
-    })
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Use admin client for server-side usage tracking to bypass RLS
+      const supabase = createAdminClient()
 
-    if (error) {
-      console.error('Failed to record usage:', error)
-      return false
+      const { data, error } = await supabase
+        .from('usage_records')
+        .insert({
+          user_id: userId,
+          chat_id: chatId,
+          model_id: costCalculation.modelId,
+          provider_id: costCalculation.providerId,
+          input_tokens: costCalculation.inputTokens,
+          output_tokens: costCalculation.outputTokens,
+          total_tokens: costCalculation.totalTokens,
+          input_cost: costCalculation.inputCost,
+          output_cost: costCalculation.outputCost,
+          total_cost: costCalculation.totalCost,
+          request_id: requestId,
+          transaction_id: transactionId,
+          status
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        // 23505 = unique constraint violation (duplicate request_id)
+        // This is expected for retried requests - idempotency working correctly
+        if (error.code === '23505' && requestId) {
+          console.log(
+            `Usage record already exists for request ${requestId} - idempotency check passed`
+          )
+          // Try to fetch the existing record ID
+          const { data: existing } = await supabase
+            .from('usage_records')
+            .select('id')
+            .eq('request_id', requestId)
+            .single()
+          return existing?.id || null
+        }
+
+        // Retry on temporary failures
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt)
+          console.warn(
+            `Failed to record usage (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms:`,
+            error
+          )
+          await sleep(delay)
+          continue
+        }
+
+        console.error('Failed to record usage after all retries:', error)
+        return null
+      }
+
+      return data?.id || null
+    } catch (error) {
+      // Retry on exceptions
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt)
+        console.warn(
+          `Error recording usage (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms:`,
+          error
+        )
+        await sleep(delay)
+        continue
+      }
+
+      console.error('Error recording usage after all retries:', error)
+      return null
     }
-
-    return true
-  } catch (error) {
-    console.error('Error recording usage:', error)
-    return false
   }
+
+  return null
 }
 
 /**

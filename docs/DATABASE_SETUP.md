@@ -30,9 +30,12 @@ If you prefer to track each change individually:
    20251018000006_add_currency_preferences.sql
    20251019000001_create_increment_balance_function.sql
    20251019000002_add_unique_payment_intent_constraint.sql
+   20251019000003_add_usage_tracking_improvements.sql
+   20251019000004_create_reserve_balance_function.sql
+   20251019000005_create_update_transaction_status_function.sql
    ```
 
-**Time:** ~5 minutes
+**Time:** ~7 minutes
 
 ## Local Development with Supabase CLI
 
@@ -101,6 +104,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<from supabase start output>
 1. **increment_balance()** - Atomic balance updates (prevents race conditions)
 2. **handle_new_user()** - Auto-creates balance record for new users
 3. **update_user_currency_preference()** - Updates user currency settings
+4. **reserve_balance()** - Pre-deduct balance for API requests (prevents insufficient funds)
+5. **update_transaction_status()** - Updates transaction metadata for reconciliation
+6. **refund_reserved_balance()** - Refunds failed API requests
 
 ### Security
 
@@ -118,13 +124,13 @@ After setup, run this quick check in Supabase SQL Editor:
 ```sql
 SELECT
   (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('model_pricing', 'usage_records', 'user_balances', 'transactions')) as tables,
-  (SELECT COUNT(*) FROM pg_proc WHERE proname IN ('increment_balance', 'handle_new_user', 'update_user_currency_preference', 'update_updated_at_column') AND pronamespace = 'public'::regnamespace) as functions,
+  (SELECT COUNT(*) FROM pg_proc WHERE proname IN ('increment_balance', 'handle_new_user', 'update_user_currency_preference', 'update_updated_at_column', 'reserve_balance', 'update_transaction_status', 'refund_reserved_balance') AND pronamespace = 'public'::regnamespace) as functions,
   (SELECT COUNT(*) FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('model_pricing', 'usage_records', 'user_balances', 'transactions')) as policies;
 ```
 
 **Expected results:**
 - `tables`: 4
-- `functions`: 4
+- `functions`: 7
 - `policies`: 11+
 
 ### Method 2: Comprehensive Verification

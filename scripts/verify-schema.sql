@@ -78,7 +78,7 @@ SELECT
   pg_get_function_result(oid) as return_type,
   pg_get_function_arguments(oid) as arguments
 FROM pg_proc
-WHERE proname IN ('increment_balance', 'handle_new_user', 'update_user_currency_preference', 'update_updated_at_column')
+WHERE proname IN ('increment_balance', 'handle_new_user', 'update_user_currency_preference', 'update_updated_at_column', 'reserve_balance', 'update_transaction_status', 'refund_reserved_balance')
   AND pronamespace = 'public'::regnamespace
 ORDER BY proname;
 
@@ -136,12 +136,12 @@ ORDER BY tablename;
 SELECT
   'SUMMARY' as category,
   (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('model_pricing', 'usage_records', 'user_balances', 'transactions')) as total_tables,
-  (SELECT COUNT(*) FROM pg_proc WHERE proname IN ('increment_balance', 'handle_new_user', 'update_user_currency_preference', 'update_updated_at_column') AND pronamespace = 'public'::regnamespace) as total_functions,
+  (SELECT COUNT(*) FROM pg_proc WHERE proname IN ('increment_balance', 'handle_new_user', 'update_user_currency_preference', 'update_updated_at_column', 'reserve_balance', 'update_transaction_status', 'refund_reserved_balance') AND pronamespace = 'public'::regnamespace) as total_functions,
   (SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('model_pricing', 'usage_records', 'user_balances', 'transactions')) as total_indexes,
   (SELECT COUNT(*) FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('model_pricing', 'usage_records', 'user_balances', 'transactions')) as total_policies;
 
 -- Expected Results:
 -- total_tables: 4
--- total_functions: 4
--- total_indexes: 14+
+-- total_functions: 7
+-- total_indexes: 18+
 -- total_policies: 11+

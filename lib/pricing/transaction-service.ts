@@ -35,6 +35,7 @@ export interface TransactionRecord {
 
 /**
  * Create a transaction record
+ * @returns Transaction ID on success, null on failure
  */
 export async function createTransaction(params: {
   userId: string
@@ -47,23 +48,27 @@ export async function createTransaction(params: {
   stripePaymentIntentId?: string
   stripeChargeId?: string
   metadata?: Record<string, unknown>
-}): Promise<boolean> {
+}): Promise<string | null> {
   try {
     // Use admin client for inserts to bypass RLS during trusted server events
     const supabase = createAdminClient()
 
-    const { error } = await supabase.from('transactions').insert({
-      user_id: params.userId,
-      type: params.type,
-      amount: params.amount,
-      currency: params.currency,
-      balance_before: params.balanceBefore,
-      balance_after: params.balanceAfter,
-      description: params.description,
-      stripe_payment_intent_id: params.stripePaymentIntentId,
-      stripe_charge_id: params.stripeChargeId,
-      metadata: params.metadata
-    })
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: params.userId,
+        type: params.type,
+        amount: params.amount,
+        currency: params.currency,
+        balance_before: params.balanceBefore,
+        balance_after: params.balanceAfter,
+        description: params.description,
+        stripe_payment_intent_id: params.stripePaymentIntentId,
+        stripe_charge_id: params.stripeChargeId,
+        metadata: params.metadata
+      })
+      .select('id')
+      .single()
 
     if (error) {
       // 23505 = unique constraint violation (duplicate payment intent)
@@ -72,16 +77,24 @@ export async function createTransaction(params: {
         console.warn(
           `Transaction already exists for payment intent ${params.stripePaymentIntentId} - skipping duplicate`
         )
-        return true // Return true since transaction already exists
+        // Try to get the existing transaction ID
+        if (params.stripePaymentIntentId) {
+          const existing = await getTransactionByPaymentIntent(
+            params.stripePaymentIntentId,
+            true
+          )
+          return existing?.id || null
+        }
+        return null
       }
       console.error('Failed to create transaction:', error)
-      return false
+      return null
     }
 
-    return true
+    return data?.id || null
   } catch (error) {
     console.error('Error creating transaction:', error)
-    return false
+    return null
   }
 }
 

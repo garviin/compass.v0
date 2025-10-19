@@ -139,7 +139,7 @@ async function handlePaymentIntentSucceeded(
   // Add balance to user account (useAdmin=true for webhook context)
   console.log(`Attempting to add ${amount} ${originalCurrency} to user ${userId}`)
 
-  const success = await addBalance(
+  const transactionId = await addBalance(
     userId,
     amount,
     `Payment received: ${paymentIntent.id}`,
@@ -153,9 +153,9 @@ async function handlePaymentIntentSucceeded(
     true // useAdmin=true for webhook processing
   )
 
-  if (success) {
+  if (transactionId) {
     console.log(
-      `✅ SUCCESS: Added ${amount} ${originalCurrency} to user ${userId}'s balance`
+      `✅ SUCCESS: Added ${amount} ${originalCurrency} to user ${userId}'s balance (transaction ${transactionId})`
     )
   } else {
     console.error(
@@ -226,7 +226,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   // Deduct the refunded amount from user's balance
   // Note: This uses addBalance with a negative amount
-  const success = await addBalance(
+  const transactionId = await addBalance(
     userId,
     -refundAmount,
     `Refund processed: ${charge.id}`,
@@ -239,9 +239,9 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     true // useAdmin=true for webhook processing
   )
 
-  if (success) {
+  if (transactionId) {
     console.log(
-      `Successfully deducted refund ${refundAmount} ${originalCurrency} from user ${userId}'s balance`
+      `Successfully deducted refund ${refundAmount} ${originalCurrency} from user ${userId}'s balance (transaction ${transactionId})`
     )
   } else {
     console.error(
