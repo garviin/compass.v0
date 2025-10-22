@@ -3,7 +3,7 @@
 
 'use client'
 
-import { FC, memo, Suspense, lazy } from 'react'
+import { FC, lazy, memo, Suspense } from 'react'
 
 import { generateId } from 'ai'
 import { Check, Copy, Download, Loader2 } from 'lucide-react'
