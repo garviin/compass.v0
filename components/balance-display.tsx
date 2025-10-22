@@ -17,15 +17,25 @@ interface BalanceData {
 interface BalanceDisplayProps {
   /** Optional publishable key passed from a server component */
   stripePublishableKey?: string
+  /** Initial balance data from server component to avoid waterfall */
+  initialBalance?: BalanceData
 }
 
-export function BalanceDisplay({ stripePublishableKey }: BalanceDisplayProps) {
-  const [balance, setBalance] = useState<BalanceData | null>(null)
-  const [loading, setLoading] = useState(true)
+export function BalanceDisplay({
+  stripePublishableKey,
+  initialBalance
+}: BalanceDisplayProps) {
+  const [balance, setBalance] = useState<BalanceData | null>(
+    initialBalance || null
+  )
+  const [loading, setLoading] = useState(!initialBalance)
 
   useEffect(() => {
-    fetchBalance()
-  }, [])
+    // Only fetch if no initial data was provided
+    if (!initialBalance) {
+      fetchBalance()
+    }
+  }, [initialBalance])
 
   const fetchBalance = async () => {
     try {
