@@ -4,7 +4,6 @@
 'use client'
 
 import { FC, memo, Suspense, lazy } from 'react'
-import type { Prism as SyntaxHighlighterType } from 'react-syntax-highlighter'
 
 import { generateId } from 'ai'
 import { Check, Copy, Download, Loader2 } from 'lucide-react'
@@ -13,20 +12,43 @@ import { useCopyToClipboard } from '@/lib/hooks/use-copy-to-clipboard'
 
 import { Button } from '@/components/ui/button'
 
-// Lazy load the heavy syntax highlighter
-const SyntaxHighlighter = lazy(
-  () =>
-    import('react-syntax-highlighter').then(mod => ({
-      default: mod.Prism as typeof SyntaxHighlighterType
-    }))
+// Lazy load the heavy syntax highlighter with its theme
+const SyntaxHighlighterComponent = lazy(() =>
+  import('react-syntax-highlighter').then(async mod => {
+    const { coldarkDark } = await import(
+      'react-syntax-highlighter/dist/cjs/styles/prism'
+    )
+    return {
+      default: ({ language, value }: { language: string; value: string }) => (
+        <mod.Prism
+          language={language}
+          style={coldarkDark}
+          PreTag="div"
+          showLineNumbers
+          customStyle={{
+            margin: 0,
+            width: '100%',
+            background: 'transparent',
+            padding: '1.5rem 1rem'
+          }}
+          lineNumberStyle={{
+            userSelect: 'none'
+          }}
+          codeTagProps={{
+            style: {
+              fontSize: '0.9rem',
+              fontFamily: 'var(--font-mono)'
+            }
+          }}
+        >
+          {value}
+        </mod.Prism>
+      )
+    }
+  })
 )
 
 interface Props {
-  language: string
-  value: string
-}
-
-interface SyntaxHighlighterComponentProps {
   language: string
   value: string
 }
@@ -61,59 +83,6 @@ export const programmingLanguages: languageMap = {
   css: '.css'
   // add more file extensions here, make sure the key is same as language prop in CodeBlock.tsx component
 }
-
-// Lazy-loaded highlighter component
-const LazyHighlighter: FC<SyntaxHighlighterComponentProps> = memo(
-  ({ language, value }) => {
-    return (
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center p-8 bg-neutral-800">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        }
-      >
-        <SyntaxHighlighter
-          language={language}
-          style={
-            {
-              'pre[class*="language-"]': {
-                background: 'transparent',
-                padding: '1.5rem 1rem',
-                margin: 0
-              },
-              'code[class*="language-"]': {
-                background: 'transparent',
-                fontSize: '0.9rem',
-                fontFamily: 'var(--font-mono)'
-              }
-            } as any
-          }
-          PreTag="div"
-          showLineNumbers
-          customStyle={{
-            margin: 0,
-            width: '100%',
-            background: 'transparent',
-            padding: '1.5rem 1rem'
-          }}
-          lineNumberStyle={{
-            userSelect: 'none'
-          }}
-          codeTagProps={{
-            style: {
-              fontSize: '0.9rem',
-              fontFamily: 'var(--font-mono)'
-            }
-          }}
-        >
-          {value}
-        </SyntaxHighlighter>
-      </Suspense>
-    )
-  }
-)
-LazyHighlighter.displayName = 'LazyHighlighter'
 
 const CodeBlock: FC<Props> = memo(({ language, value }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 })
@@ -177,7 +146,15 @@ const CodeBlock: FC<Props> = memo(({ language, value }) => {
           </Button>
         </div>
       </div>
-      <LazyHighlighter language={language} value={value} />
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center p-8 bg-neutral-800">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <SyntaxHighlighterComponent language={language} value={value} />
+      </Suspense>
     </div>
   )
 })
