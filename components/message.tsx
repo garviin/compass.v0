@@ -7,9 +7,9 @@ import remarkGfm from 'remark-gfm'
 
 import { cn } from '@/lib/utils'
 
-import { Citing } from './custom-link'
 import { CodeBlock } from './ui/codeblock'
 import { MemoizedReactMarkdown } from './ui/markdown'
+import { Citing } from './custom-link'
 
 // Lazy load KaTeX only when needed
 let katexCSSLoaded = false
