@@ -3,16 +3,50 @@
 
 'use client'
 
-import { FC, memo } from 'react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { coldarkDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
+import { FC, lazy, memo, Suspense } from 'react'
 
 import { generateId } from 'ai'
-import { Check, Copy, Download } from 'lucide-react'
+import { Check, Copy, Download, Loader2 } from 'lucide-react'
 
 import { useCopyToClipboard } from '@/lib/hooks/use-copy-to-clipboard'
 
 import { Button } from '@/components/ui/button'
+
+// Lazy load the heavy syntax highlighter with its theme
+const SyntaxHighlighterComponent = lazy(() =>
+  import('react-syntax-highlighter').then(async mod => {
+    const { coldarkDark } = await import(
+      'react-syntax-highlighter/dist/cjs/styles/prism'
+    )
+    return {
+      default: ({ language, value }: { language: string; value: string }) => (
+        <mod.Prism
+          language={language}
+          style={coldarkDark}
+          PreTag="div"
+          showLineNumbers
+          customStyle={{
+            margin: 0,
+            width: '100%',
+            background: 'transparent',
+            padding: '1.5rem 1rem'
+          }}
+          lineNumberStyle={{
+            userSelect: 'none'
+          }}
+          codeTagProps={{
+            style: {
+              fontSize: '0.9rem',
+              fontFamily: 'var(--font-mono)'
+            }
+          }}
+        >
+          {value}
+        </mod.Prism>
+      )
+    }
+  })
+)
 
 interface Props {
   language: string
@@ -112,29 +146,15 @@ const CodeBlock: FC<Props> = memo(({ language, value }) => {
           </Button>
         </div>
       </div>
-      <SyntaxHighlighter
-        language={language}
-        style={coldarkDark}
-        PreTag="div"
-        showLineNumbers
-        customStyle={{
-          margin: 0,
-          width: '100%',
-          background: 'transparent',
-          padding: '1.5rem 1rem'
-        }}
-        lineNumberStyle={{
-          userSelect: 'none'
-        }}
-        codeTagProps={{
-          style: {
-            fontSize: '0.9rem',
-            fontFamily: 'var(--font-mono)'
-          }
-        }}
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center p-8 bg-neutral-800">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        }
       >
-        {value}
-      </SyntaxHighlighter>
+        <SyntaxHighlighterComponent language={language} value={value} />
+      </Suspense>
     </div>
   )
 })
