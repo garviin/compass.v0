@@ -67,8 +67,11 @@ export default function UserMenu({ user }: UserMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-60" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
+        <DropdownMenuItem
+          className="font-normal cursor-pointer"
+          onClick={() => router.push('/account')}
+        >
+          <div className="flex flex-col space-y-1 w-full">
             <p className="text-sm font-medium leading-none truncate">
               {userName}
             </p>
@@ -76,7 +79,7 @@ export default function UserMenu({ user }: UserMenuProps) {
               {user.email}
             </p>
           </div>
-        </DropdownMenuLabel>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
